@@ -1,27 +1,2 @@
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Connexion pCloud…</title></head>
-<body>
-<p id="msg" style="font-family:sans-serif;font-size:1.2rem;padding:20px;">Connexion en cours…</p>
-<script>
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.slice(1));
-    const token = params.get('access_token');
-    const hostname = params.get('hostname') || '';
-    if (token) {
-      document.getElementById('msg').textContent = 'Token trouvé ✓ — redirection…';
-      // Pass token in query string to index.html (avoids localStorage isolation on iOS)
-      const dest = 'https://ingridgardenmama83.github.io/Comptes-Loula/index.html' +
-        '?pcloud_token=' + encodeURIComponent(token) +
-        (hostname ? '&pcloud_hostname=' + encodeURIComponent(hostname) : '');
-      setTimeout(() => { window.location.replace(dest); }, 500);
-    } else {
-      document.getElementById('msg').textContent = 'Erreur: token vide dans le hash';
-    }
-  } else {
-    document.getElementById('msg').textContent = 'Erreur: pas de hash — ' + window.location.href.slice(0, 200);
-  }
-</script>
-</body>
-</html>
+⏺ Read(/Users/I303972/OneDrive - SAP SE/Laptop/Perso/Mum/Netlify/oauth.html)
+  ⎿  Read 28 lines
