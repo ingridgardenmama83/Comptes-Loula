@@ -500,8 +500,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
 <div id="header">
   <div id="header-top">
     <h1>Comptes Loula</h1>
-    <button id="btn-save-header" onclick="sauvegarderFichier()">💾 Sauvegarder</button>
-  </div>
+    <button id="btn-save-header" onclick="sauvegarderFichier()">💾 Sauvegarder</button>  </div>
   <div id="solde-display">—</div>
   <div id="solde-date"></div>
 </div>
@@ -607,41 +606,20 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       <span class="data-lbl">Dernière sauvegarde</span>
       <span class="data-val" id="info-maj">—</span>
     </div>
-    <div class="data-row">
-      <span class="data-lbl">pCloud</span>
-      <span class="data-val" id="pcloud-status">Non connecté</span>
-    </div>
   </div>
 
-  <!-- pCloud connexion / sync -->
-  <div class="card" id="card-pcloud-login" style="display:none;">
-    <p style="font-weight:700;margin-bottom:8px;font-size:1rem;">Connexion pCloud</p>
-    <p style="font-size:0.85rem;color:var(--gris);margin-bottom:14px;">
-      Connectez-vous à pCloud pour sauvegarder et synchroniser vos données automatiquement.
-    </p>
-    <button class="btn btn-principal" onclick="pcloudLogin()">🔗 Se connecter à pCloud</button>
-  </div>
-
-  <div class="card" id="card-pcloud-sync" style="display:none;">
-    <p style="font-weight:700;margin-bottom:8px;font-size:1rem;">Synchronisation pCloud</p>
-    <p style="font-size:0.85rem;color:var(--gris);margin-bottom:14px;">
-      Les données sont sauvegardées automatiquement sur pCloud après chaque modification.
-    </p>
-    <button class="btn btn-vert" style="margin-bottom:10px;" onclick="pcloudSauvegarder()">☁️ Sauvegarder sur pCloud</button>
-    <button class="btn btn-neutre" style="margin-bottom:10px;" onclick="pcloudCharger()">📥 Recharger depuis pCloud</button>
-    <button class="btn btn-neutre" onclick="pcloudDeconnecter()">🔓 Se déconnecter</button>
-  </div>
-
-  <!-- Sauvegarde locale (secours) -->
+  <!-- Sauvegarde locale -->
   <div class="card">
-    <p style="font-weight:700;margin-bottom:8px;font-size:1rem;">Sauvegarde locale (secours)</p>
+    <p style="font-weight:700;margin-bottom:8px;font-size:1rem;">Sauvegarde</p>
     <p style="font-size:0.85rem;color:var(--gris);margin-bottom:14px;">
-      Télécharge une copie locale en cas de problème avec pCloud.
+      Téléchargez régulièrement une copie de vos données.
     </p>
-    <button class="btn btn-neutre" style="margin-bottom:10px;" onclick="sauvegarderFichier()">💾 Télécharger JSON</button>
+    <button class="btn btn-vert" style="margin-bottom:10px;" onclick="sauvegarderFichier()">💾 Télécharger JSON</button>
     <label class="btn btn-neutre" style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-top:0;">
-      📂 Charger une sauvegarde locale
+      📂 Charger une sauvegarde
       <input type="file" id="input-fichier" accept=".json" style="display:none" onchange="chargerFichier(this)">
+    </label>
+  </div>
     </label>
   </div>
 
@@ -1153,189 +1131,7 @@ function modifierSoldeInitial() {
 // ─────────────────────────────────────────────────────
 //  SAUVEGARDE / CHARGEMENT
 // ─────────────────────────────────────────────────────
-//  PCLOUD CONFIG
-// ─────────────────────────────────────────────────────
-const PCLOUD_CLIENT_ID  = 'OxGebK0BSfJ';
-const PCLOUD_FOLDER     = '/Documents/Comptes';
-const PCLOUD_FILENAME   = 'comptes_loula.json';
-
-function pcloudAPI() {
-  return 'https://' + (localStorage.getItem('pcloud_hostname') || 'eapi.pcloud.com');
-}
-
-let donneesMAJ   = null;
-let pcloudToken  = null;
-let pcloudFolderId = null;
-
-function pcloudLogin() {
-  // Store current URL so we can detect the token on return
-  const redirectUri = 'https://ingridgardenmama83.github.io/Comptes-Loula/oauth.html';
-  const url = 'https://my.pcloud.com/oauth2/authorize' +
-    '?client_id=' + PCLOUD_CLIENT_ID +
-    '&response_type=token' +
-    '&redirect_uri=' + encodeURIComponent(redirectUri);
-  window.location.href = url;
-}
-
-function pcloudCheckToken() {
-  // Read token from query string (passed by oauth.html)
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('pcloud_token');
-  if (token) {
-    pcloudToken = token;
-    localStorage.setItem('pcloud_token', token);
-    const hostname = params.get('pcloud_hostname');
-    if (hostname) localStorage.setItem('pcloud_hostname', hostname);
-    history.replaceState(null, '', window.location.pathname);
-    pcloudUpdateUI();
-    return true;
-  }
-  // Fall back to localStorage
-  const saved = localStorage.getItem('pcloud_token');
-  if (saved) { pcloudToken = saved; return true; }
-  return false;
-}
-
-function pcloudUpdateUI() {
-  const loggedIn = !!pcloudToken;
-  document.getElementById('card-pcloud-login').style.display = loggedIn ? 'none' : 'block';
-  document.getElementById('card-pcloud-sync').style.display  = loggedIn ? 'block' : 'none';
-  document.getElementById('pcloud-status').textContent = loggedIn ? '✓ Connecté' : 'Non connecté';
-  document.getElementById('pcloud-status').style.color = loggedIn ? 'var(--vert)' : 'var(--rouge)';
-  // Update save button label
-  const btn = document.getElementById('btn-save-header');
-  if (btn) btn.textContent = loggedIn ? '☁️ Sauvegarder' : '💾 Sauvegarder';
-  // Refresh Données section if visible
-  if (sectionActive === 'donnees') rendreDonnees();
-}
-
-function pcloudDeconnecter() {
-  pcloudToken = null;
-  pcloudFolderId = null;
-  localStorage.removeItem('pcloud_token');
-  pcloudUpdateUI();
-}
-
-async function pcloudGetFolderId() {
-  if (pcloudFolderId) return pcloudFolderId;
-  // List root to find Documents/Comptes
-  const parts = PCLOUD_FOLDER.split('/').filter(Boolean);
-  let parentId = 0;
-  for (const part of parts) {
-    const res = await fetch(pcloudAPI() + '/listfolder?access_token=' + pcloudToken + '&folderid=' + parentId);
-    const data = await res.json();
-    if (data.result !== 0) throw new Error('pCloud erreur: ' + data.error);
-    const found = data.metadata.contents.find(f => f.isfolder && f.name === part);
-    if (found) {
-      parentId = found.folderid;
-    } else {
-      // Create folder
-      const cr = await fetch(pcloudAPI() + '/createfolder?access_token=' + pcloudToken + '&folderid=' + parentId + '&name=' + encodeURIComponent(part));
-      const cd = await cr.json();
-      if (cd.result !== 0) throw new Error('pCloud: impossible de créer le dossier ' + part);
-      parentId = cd.metadata.folderid;
-    }
-  }
-  pcloudFolderId = parentId;
-  return pcloudFolderId;
-}
-
-async function pcloudSauvegarder() {
-  if (!pcloudToken) { pcloudLogin(); return; }
-  donneesMAJ = new Date().toISOString();
-  const json = JSON.stringify({ ...donnees, _maj: donneesMAJ }, null, 2);
-  try {
-    afficherStatutPCloud('Sauvegarde en cours…', '#555');
-    const folderId = await pcloudGetFolderId();
-    const blob = new Blob([json], { type: 'application/json' });
-    const form = new FormData();
-    form.append('folderid', folderId);
-    form.append('filename', PCLOUD_FILENAME);
-    form.append('nopartial', '1');
-    form.append('renameifexists', '0');
-    // Delete existing file first to overwrite cleanly
-    await pcloudSupprimerFichierSiExiste(folderId);
-    form.append(PCLOUD_FILENAME, blob, PCLOUD_FILENAME);
-    const res = await fetch(pcloudAPI() + '/uploadfile?access_token=' + pcloudToken, { method: 'POST', body: form });
-    const data = await res.json();
-    if (data.result !== 0) throw new Error(data.error);
-    afficherStatutPCloud('✓ Sauvegardé sur pCloud', 'var(--vert)');
-    donneesMAJ = new Date().toISOString();
-    localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ }));
-    if (sectionActive === 'donnees') rendreDonnees();
-  } catch(e) {
-    afficherStatutPCloud('Erreur pCloud: ' + e.message, 'var(--rouge)');
-    alert('Erreur pCloud: ' + e.message);
-  }
-}
-
-async function pcloudSupprimerFichierSiExiste(folderId) {
-  try {
-    const res = await fetch(pcloudAPI() + '/listfolder?access_token=' + pcloudToken + '&folderid=' + folderId);
-    const data = await res.json();
-    if (data.result !== 0) return;
-    const existing = data.metadata.contents.find(f => !f.isfolder && f.name === PCLOUD_FILENAME);
-    if (existing) {
-      await fetch(pcloudAPI() + '/deletefile?access_token=' + pcloudToken + '&fileid=' + existing.fileid);
-    }
-  } catch(e) {}
-}
-
-async function pcloudCharger() {
-  if (!pcloudToken) { pcloudLogin(); return; }
-  pcloudSaveEnabled = false;
-  try {
-    afficherStatutPCloud('Chargement depuis pCloud…', '#555');
-    const folderId = await pcloudGetFolderId();
-    const res = await fetch(pcloudAPI() + '/listfolder?access_token=' + pcloudToken + '&folderid=' + folderId);
-    const data = await res.json();
-    if (data.result !== 0) throw new Error(data.error);
-    const file = data.metadata.contents.find(f => !f.isfolder && f.name === PCLOUD_FILENAME);
-    if (!file) { afficherStatutPCloud('Aucun fichier trouvé sur pCloud', 'var(--rouge)'); return; }
-    // Use gettextfile to read content directly (avoids referer issues with getfilelink)
-    const fr = await fetch(pcloudAPI() + '/gettextfile?access_token=' + pcloudToken + '&fileid=' + file.fileid);
-    if (!fr.ok) throw new Error('HTTP ' + fr.status);
-    const rawText = await fr.text();
-    let json;
-    try { json = JSON.parse(rawText); } catch(e) { throw new Error('JSON invalide: ' + rawText.slice(0, 100)); }
-    // Token expired or invalid — force re-login
-    if (json.result === 1000 || json.result === 2000) {
-      pcloudDeconnecter();
-      afficherStatutPCloud('Session expirée — veuillez vous reconnecter', 'var(--rouge)');
-      pcloudUpdateUI();
-      pcloudSaveEnabled = true;
-      sauvegardeAuto();
-      mettreAJourHeader();
-      rendreOperations();
-      return;
-    }
-    if (!json.transactions) throw new Error('Format invalide — reçu: ' + JSON.stringify(Object.keys(json)));
-    donnees = { version: json.version || 1, solde_initial: json.solde_initial || 0, transactions: json.transactions };
-    donneesMAJ = json._maj || null;
-    // Save to localStorage only (not back to pCloud — we just loaded from there)
-    try { localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ })); } catch(e) {}
-    mettreAJourHeader();
-    rendreOperations();
-    if (sectionActive === 'donnees') rendreDonnees();
-    afficherStatutPCloud('✓ Données chargées depuis pCloud', 'var(--vert)');
-  } catch(e) {
-    afficherStatutPCloud('Erreur: ' + e.message, 'var(--rouge)');
-    // Fall back to localStorage data on error
-    rendreOperations();
-  } finally {
-    pcloudSaveEnabled = true;
-  }
-}
-
-function afficherStatutPCloud(msg, couleur) {
-  const el = document.getElementById('pcloud-status');
-  if (el) { el.textContent = msg; el.style.color = couleur; }
-}
-
-// ─────────────────────────────────────────────────────
-//  SAUVEGARDE / CHARGEMENT
-// ─────────────────────────────────────────────────────
-let pcloudSaveEnabled = true;
+let donneesMAJ = null;
 
 function sauvegardeAuto() {
   donneesMAJ = new Date().toISOString();
@@ -1343,8 +1139,6 @@ function sauvegardeAuto() {
     localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ }));
   } catch(e) {}
   mettreAJourHeader();
-  // Auto-save to pCloud if connected and not currently loading
-  if (pcloudToken && pcloudSaveEnabled) pcloudSauvegarder();
 }
 
 function mettreAJourHeader() {
@@ -1361,7 +1155,7 @@ function mettreAJourHeader() {
 // ─────────────────────────────────────────────────────
 function sauvegarderFichier() {
   donneesMAJ = new Date().toISOString();
-  // Save to localStorage only (no pCloud trigger)
+  // Save to localStorage only
   try { localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ })); } catch(e) {}
   const json = JSON.stringify({ ...donnees, _maj: donneesMAJ }, null, 2);
   const encoded = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
@@ -1443,30 +1237,11 @@ function init() {
     }
   } catch(e) {}
 
-  // Check pCloud token first (from OAuth redirect or localStorage)
-  pcloudCheckToken();
-  pcloudUpdateUI();
-
-  // If connected to pCloud, load from there; otherwise render from localStorage
-  if (pcloudToken) {
-    document.getElementById('liste-operations').innerHTML = '<p class="empty-msg">Chargement depuis pCloud…</p>';
-    mettreAJourHeader();
-    pcloudCharger();
-  } else {
-    mettreAJourHeader();
-    rendreOperations();
-  }
+  mettreAJourHeader();
+  rendreOperations();
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
-// iOS bfcache fix — re-check token if page is restored from cache
-window.addEventListener('pageshow', function(e) {
-  if (e.persisted && !pcloudToken) {
-    pcloudCheckToken();
-    pcloudUpdateUI();
-  }
-});
 </script>
 <!-- ══════════════════════════════════════════
      MODAL : Confirmation suppression
