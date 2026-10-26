@@ -492,14 +492,71 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     font-weight: 600;
     color: var(--gris);
   }
+   /* ── Page d'accueil ── */
+  #accueil { display: none; padding: 28px 16px; }
+  body.accueil-mode #accueil { display: block; }
+  body.accueil-mode #header,
+  body.accueil-mode #tabs,
+  body.accueil-mode .section { display: none !important; }
+
+  .accueil-titre {
+    font-size: 1.6rem;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+  .accueil-sous {
+    text-align: center;
+    color: var(--gris);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+  }
+  .compte-btn {
+    display: block;
+    width: 100%;
+    background: #fff;
+    border: 3px solid var(--accent);
+    border-radius: 16px;
+    padding: 24px 20px;
+    margin-bottom: 18px;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .compte-btn:active { background: #eef3fa; }
+  .compte-nom   { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+  .compte-solde { font-size: 1.9rem; font-weight: 800; margin-top: 8px; }
+  .compte-info  { font-size: 0.85rem; color: var(--gris); margin-top: 4px; }
+
+  #btn-retour {
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.6);
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 </style>
 </head>
 <body>
-
+<!-- Page d'accueil -->
+<div id="accueil">
+  <div class="accueil-titre">Comptes Loula</div>
+  <div class="accueil-sous">Choisissez un compte</div>
+  <div id="liste-comptes"></div>
+</div>
 <!-- Header -->
 <div id="header">
   <div id="header-top">
-    <h1>Comptes Loula</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button id="btn-retour" onclick="afficherAccueil()">←</button>
+      <h1 id="titre-compte">Comptes Loula</h1>
+    </div>
     <button id="btn-save-header" onclick="sauvegarderFichier()">💾 Sauvegarder</button>  </div>
   <div id="solde-display">—</div>
   <div id="solde-date"></div>
@@ -1134,7 +1191,7 @@ let donneesMAJ = null;
 function sauvegardeAuto() {
   donneesMAJ = new Date().toISOString();
   try {
-    localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ }));
+       localStorage.setItem(compteActif.cle, JSON.stringify({ ...donnees, _maj: donneesMAJ }));
   } catch(e) {}
   mettreAJourHeader();
 }
@@ -1154,12 +1211,12 @@ function mettreAJourHeader() {
 function sauvegarderFichier() {
   donneesMAJ = new Date().toISOString();
   // Save to localStorage only
-  try { localStorage.setItem('comptes_loula', JSON.stringify({ ...donnees, _maj: donneesMAJ })); } catch(e) {}
+  try { localStorage.setItem(compteActif.cle, JSON.stringify({ ...donnees, _maj: donneesMAJ })); } catch(e) {}
   const json = JSON.stringify({ ...donnees, _maj: donneesMAJ }, null, 2);
   const encoded = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
   const a = document.createElement('a');
   a.href = encoded;
-  a.download = 'comptes_loula.json';
+  a.download = compteActif.fichier;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1208,35 +1265,79 @@ function escHtml(s) {
 // ─────────────────────────────────────────────────────
 const DONNEES_INITIALES = {"version": 1, "solde_initial": 0, "transactions": []};
 
-function init() {
-  document.getElementById('f-date').value = aujourdhui();
+// ─────────────────────────────────────────────────────
+//  GESTION DES COMPTES
+// ─────────────────────────────────────────────────────
+const COMPTES = [
+  { id: '1', nom: 'Banque Postale', cle: 'comptes_loula',   fichier: 'comptes_loula.json'   },
+  { id: '2', nom: 'Caisse Epargne', cle: 'comptes_loula_2', fichier: 'comptes_loula_2.json' }
+];
+let compteActif = null;
 
-  // Toujours partir des données initiales embarquées comme base,
-  // puis écraser avec localStorage si celui-ci en contient davantage ou a un _maj
-  donnees = {
-    version:       DONNEES_INITIALES.version,
-    solde_initial: DONNEES_INITIALES.solde_initial,
-    transactions:  JSON.parse(JSON.stringify(DONNEES_INITIALES.transactions))
-  };
-
+function lireCompte(c) {
   try {
-    const saved = localStorage.getItem('comptes_loula');
+    const saved = localStorage.getItem(c.cle);
     if (saved) {
-      const data = JSON.parse(saved);
-      if (data.transactions && data.transactions.length > 0 && data._maj) {
-        // localStorage contient des données avec une date de sauvegarde → priorité
-        donnees = {
-          version:       data.version || 1,
-          solde_initial: data.solde_initial != null ? data.solde_initial : DONNEES_INITIALES.solde_initial,
-          transactions:  data.transactions
-        };
-        donneesMAJ = data._maj;
-      }
+      const d = JSON.parse(saved);
+      if (d.transactions && d._maj) return d;
     }
   } catch(e) {}
+  if (c.id === '1') {
+    return {
+      version: DONNEES_INITIALES.version,
+      solde_initial: DONNEES_INITIALES.solde_initial,
+      transactions: JSON.parse(JSON.stringify(DONNEES_INITIALES.transactions))
+    };
+  }
+  return { version: 1, solde_initial: 0, transactions: [] };
+}
 
+function rendreAccueil() {
+  document.getElementById('liste-comptes').innerHTML = COMPTES.map(c => {
+    const d = lireCompte(c);
+    let s = d.solde_initial || 0;
+    for (const t of d.transactions) s += (t.entree || 0) - (t.sortie || 0);
+    s = Math.round(s * 100) / 100;
+    const nb = d.transactions.length;
+    return `
+      <button class="compte-btn" onclick="ouvrirCompte('${c.id}')">
+        <div class="compte-nom">${escHtml(c.nom)}</div>
+        <div class="compte-solde" style="color:${s < 0 ? 'var(--rouge)' : 'var(--text)'}">${euros(s)}</div>
+        <div class="compte-info">${nb} opération${nb > 1 ? 's' : ''}</div>
+      </button>`;
+  }).join('');
+}
+
+function afficherAccueil() {
+  compteActif = null;
+  document.getElementById('modal-overlay').classList.remove('ouvert');
+  document.body.classList.add('accueil-mode');
+  rendreAccueil();
+  window.scrollTo(0, 0);
+}
+
+function ouvrirCompte(id) {
+  compteActif = COMPTES.find(c => c.id === id);
+  const d = lireCompte(compteActif);
+  donnees = {
+    version:       d.version || 1,
+    solde_initial: d.solde_initial || 0,
+    transactions:  d.transactions || []
+  };
+  donneesMAJ = d._maj || null;
+  document.getElementById('titre-compte').textContent = compteActif.nom;
+  document.body.classList.remove('accueil-mode');
+  filtres = { 'non-rapp': false, 'entrees': false, 'sorties': false };
+  document.querySelectorAll('.filtre-btn').forEach(b => b.classList.remove('actif'));
+  document.getElementById('f-tout').classList.add('actif');
+  afficherSection('operations');
   mettreAJourHeader();
-  rendreOperations();
+  window.scrollTo(0, 0);
+}
+
+function init() {
+  document.getElementById('f-date').value = aujourdhui();
+  afficherAccueil();
 }
 
 init();
